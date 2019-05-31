@@ -2,41 +2,51 @@ version: 2.1
 executors:
   docker-publisher:
     environment:
-      IMAGE_NAME: building-on-ci
+      IMAGE_NAME: jonathancardoso/building-on-ci
     docker:
-      - image: circleci/python:3.6.4
+      - image: circleci/buildpack-deps:stretch
 jobs:
-  build_test: # required for runs that don't use workflows
-    working_directory: ~/hello1-circleci
+  build:
     executor: docker-publisher
-
-    steps:
-      - checkout # checkout source code to working directory
-      - setup_remote_docker
-      - run:
-          command: | # use pipenv to install dependencies
-            sudo pip install pipenv
-            pipenv install
-            pipenv run python manage.py test
-  createimage:
     steps:
       - checkout
       - setup_remote_docker
       - run:
           name: Build Docker image
-          command: docker build -t $IMAGE_NAME:latest .
-
+          command: |
+            docker build -t $IMAGE_NAME:latest .
+      - run:
+          name: Archive Docker image
+          command: docker save -o image.tar $IMAGE_NAME
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./image.tar
+  publish-latest:
+    executor: docker-publisher
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - setup_remote_docker
+      - run:
+          name: Load archived Docker image
+          command: docker load -i /tmp/workspace/image.tar
+      - run:
+          name: Publish Docker Image to Docker Hub
+          command: |
+            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+            docker push $IMAGE_NAME:latest
 workflows:
   version: 2
   build-master:
     jobs:
-      - build_test:
+      - build:
           filters:
             branches:
               only: master
-      - createimage:
+      - publish-latest:
           requires:
-            - build_test
+            - build
           filters:
             branches:
               only: master
