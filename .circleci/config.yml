@@ -1,28 +1,28 @@
 version: 2.1
 executors:
-  docker-env:
+  docker-publisher:
     environment:
       IMAGE_NAME: amramadan/hello1-circleci
     docker:
       - image: circleci/python:3.6.4
 jobs:
   test:
-    executor: docker-env
+    executor: docker-publisher
     steps:
       - checkout
       - run:
           name: Runing django tests
-          command: |
+          command: | # use pipenv to install dependencies
             sudo pip install pipenv
             pipenv install
             pipenv run python manage.py test
   build:
-    executor: docker-env
+    executor: docker-publisher
     steps:
       - checkout
       - setup_remote_docker
       - run:
-          name: Building Docker image
+          name: Build Docker image
           command: |
             docker build -t $IMAGE_NAME:latest .
       - run:
@@ -32,17 +32,17 @@ jobs:
           root: .
           paths:
             - ./image.tar
-  publish:
-    executor: docker-env
+  publish-latest:
+    executor: docker-publisher
     steps:
       - attach_workspace:
           at: /tmp/workspace
       - setup_remote_docker
       - run:
-          name: Loading archived Docker image
+          name: Load archived Docker image
           command: docker load -i /tmp/workspace/image.tar
       - run:
-          name: Publishing to Docker Hub
+          name: Publish Docker Image to Docker Hub
           command: |
             echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             docker push $IMAGE_NAME:latest
@@ -50,10 +50,10 @@ workflows:
   version: 2
   build-master:
     jobs:
-      - test:
+      - test
       - build:
           requires:
             - test
-      - publish:
+      - publish-latest:
           requires:
             - build
