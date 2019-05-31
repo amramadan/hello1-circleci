@@ -1,0 +1,13 @@
+version: 2
+jobs:
+  build: # required for runs that don't use workflows
+    working_directory: ~/hello1-circleci
+    docker:
+      - image: circleci/python:3.6.4 # primary container for the build job
+    steps:
+      - checkout # checkout source code to working directory
+      - run:
+          command: | # use pipenv to install dependencies
+            sudo pip install pipenv
+            pipenv install
+            pipenv run python manage.py test
