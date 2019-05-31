@@ -1,13 +1,42 @@
-version: 2
-jobs:
-  build: # required for runs that don't use workflows
-    working_directory: ~/hello1-circleci
+version: 2.1
+executors:
+  docker-publisher:
+    environment:
+      IMAGE_NAME: building-on-ci
     docker:
-      - image: circleci/python:3.6.4 # primary container for the build job
+      - image: circleci/python:3.6.4
+jobs:
+  build_test: # required for runs that don't use workflows
+    working_directory: ~/hello1-circleci
+    executor: docker-publisher
+
     steps:
       - checkout # checkout source code to working directory
+      - setup_remote_docker
       - run:
           command: | # use pipenv to install dependencies
             sudo pip install pipenv
             pipenv install
             pipenv run python manage.py test
+  createimage:
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Build Docker image
+          command: docker build -t $IMAGE_NAME:latest .
+
+workflows:
+  version: 2
+  build-master:
+    jobs:
+      - build_test:
+          filters:
+            branches:
+              only: master
+      - createimage:
+          requires:
+            - build_test
+          filters:
+            branches:
+              only: master
