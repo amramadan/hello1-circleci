@@ -10,12 +10,12 @@ jobs:
     executor: docker-publisher
     steps:
       - checkout
-    - run:
-        name: Runing django tests
-        command: | # use pipenv to install dependencies
-          sudo pip install pipenv
-          pipenv install
-          pipenv run python manage.py test
+      - run:
+          name: Runing django tests
+          command: | # use pipenv to install dependencies
+            sudo pip install pipenv
+            pipenv install
+            pipenv run python manage.py test
   build:
     executor: docker-publisher
     steps:
