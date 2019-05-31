@@ -6,10 +6,19 @@ executors:
     docker:
       - image: circleci/python:3.6.4
 jobs:
-  build:
+  test:
     executor: docker-publisher
     steps:
       - checkout
+    - run:
+        name: Runing django tests
+        command: | # use pipenv to install dependencies
+          sudo pip install pipenv
+          pipenv install
+          pipenv run python manage.py test
+  build:
+    executor: docker-publisher
+    steps:
       - setup_remote_docker
       - run:
           name: Build Docker image
@@ -34,13 +43,18 @@ jobs:
       - run:
           name: Publish Docker Image to Docker Hub
           command: |
-            echo "$DOCKERHUB_PASS" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-            docker push $IMAGE_NAME:latest
+            echo "$DOCKERHUB_PASS"
 workflows:
   version: 2
   build-master:
     jobs:
+      - test:
+          filters:
+            branches:
+              only: master
       - build:
+          requires:
+            - test
           filters:
             branches:
               only: master
